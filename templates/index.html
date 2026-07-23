@@ -985,7 +985,8 @@ fetch('/api/file-content/' + encodeURIComponent(name))
 .then(r => r.json())
 .then(data => {
 if (data.type === 'json') {
-body.innerHTML = '<pre>' + JSON.stringify(JSON.parse(data.content), null, 2) + '</pre>';
+const jsonStr = JSON.stringify(JSON.parse(data.content), null, 2);
+body.innerHTML = '<pre>' + jsonStr.replace(/\\n/g, '\n') + '</pre>';
 } else {
 body.textContent = data.content;
 }
