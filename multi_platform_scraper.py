@@ -664,13 +664,15 @@ def scrape_article(url: str, favor_precision: bool = True) -> dict:
                     output_format="html",
                 )
                 if article_html:
-                    # Конвертируем <p>, <h1-h6>, <li>, <blockquote> в переносы строк
                     import html as html_lib
                     text = re.sub(r'<br\s*/?>', '\n', article_html)
                     text = re.sub(r'</?(p|h[1-6]|li|blockquote)\b[^>]*>', '\n\n', text)
                     text = re.sub(r'<[^>]+>', '', text)
                     text = html_lib.unescape(text)
-                    text = re.sub(r'\n{3,}', '\n\n', text).strip()
+                    # Убираем строки с только пробелами, сжимаем множественные переносы
+                    lines = [l.strip() for l in text.split('\n')]
+                    lines = [l for l in lines if l]
+                    text = '\n\n'.join(lines)
 
                 if not text:
                     text = trafilatura.extract(html, favor_recall=True)
