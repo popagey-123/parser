@@ -554,6 +554,77 @@ opacity: 0.5;
 font-size: 14px;
 }
 
+.modal-overlay {
+display: none;
+position: fixed;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+background: rgba(0,0,0,0.6);
+z-index: 200;
+align-items: center;
+justify-content: center;
+padding: 24px;
+}
+
+.modal-overlay.active {
+display: flex;
+}
+
+.modal {
+background: var(--bg2);
+border: 1px solid var(--border);
+border-radius: 16px;
+width: 100%;
+max-width: 800px;
+max-height: 80vh;
+display: flex;
+flex-direction: column;
+box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+
+.modal-header {
+padding: 16px 20px;
+border-bottom: 1px solid var(--border);
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+
+.modal-title {
+font-weight: 600;
+font-size: 16px;
+}
+
+.modal-close {
+background: none;
+border: none;
+color: var(--text2);
+font-size: 24px;
+cursor: pointer;
+padding: 0 4px;
+line-height: 1;
+}
+
+.modal-close:hover {
+color: var(--text);
+}
+
+.modal-body {
+padding: 20px;
+overflow-y: auto;
+font-size: 14px;
+line-height: 1.6;
+white-space: pre-wrap;
+word-break: break-word;
+}
+
+.modal-body pre {
+margin: 0;
+font-family: inherit;
+}
+
 footer {
 text-align: center;
 padding: 24px;
@@ -697,6 +768,17 @@ h1 { font-size: 28px; }
 <div class="result-grid" id="result-grid"></div>
 </div>
 </main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="file-modal" onclick="closeModal(event)">
+<div class="modal" onclick="event.stopPropagation()">
+<div class="modal-header">
+<span class="modal-title" id="modal-title">Содержимое файла</span>
+<button class="modal-close" onclick="closeModal()">&times;</button>
+</div>
+<div class="modal-body" id="modal-body"></div>
+</div>
+</div>
 
 <footer>Scraper Hub &middot; Playwright + Trafilatura</footer>
 
@@ -882,7 +964,7 @@ return;
 container.innerHTML = '<div class="files-grid">' + files.map(f => {
 const icon = f.name.endsWith('.json') ? '📊' : f.name.endsWith('.md') ? '📝' : '📄';
 const size = f.size > 1024 ? (f.size / 1024).toFixed(1) + ' KB' : f.size + ' B';
-return '<a class="file-item" href="/download/' + encodeURIComponent(f.name) + '" style="text-decoration:none;color:inherit"><span class="file-icon">' + icon + '</span><div class="file-info"><div class="file-name">' + f.name + '</div><div class="file-meta">' + size + ' · ' + f.modified + '</div></div><span style="font-size:16px">⬇️</span></a>';
+return '<div class="file-item" onclick="openFile(\'' + f.name.replace(/'/g, "\\'") + '\')"><span class="file-icon">' + icon + '</span><div class="file-info"><div class="file-name">' + f.name + '</div><div class="file-meta">' + size + ' · ' + f.modified + '</div></div><a href="/download/' + encodeURIComponent(f.name) + '" onclick="event.stopPropagation()" style="font-size:16px;text-decoration:none">⬇️</a></div>';
 }).join('') + '</div>';
 });
 }
@@ -890,6 +972,34 @@ return '<a class="file-item" href="/download/' + encodeURIComponent(f.name) + '"
 // Init theme
 const saved = localStorage.getItem('theme');
 if (saved) document.documentElement.setAttribute('data-theme', saved);
+
+function openFile(name) {
+const modal = document.getElementById('file-modal');
+const title = document.getElementById('modal-title');
+const body = document.getElementById('modal-body');
+title.textContent = name;
+body.textContent = 'Загрузка...';
+modal.classList.add('active');
+
+fetch('/api/file-content/' + encodeURIComponent(name))
+.then(r => r.json())
+.then(data => {
+if (data.type === 'json') {
+body.innerHTML = '<pre>' + JSON.stringify(JSON.parse(data.content), null, 2) + '</pre>';
+} else {
+body.textContent = data.content;
+}
+})
+.catch(err => {
+body.textContent = 'Ошибка загрузки: ' + err;
+});
+}
+
+function closeModal(e) {
+if (!e || e.target.id === 'file-modal') {
+document.getElementById('file-modal').classList.remove('active');
+}
+}
 </script>
 </body>
 </html>

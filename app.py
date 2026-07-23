@@ -227,6 +227,17 @@ def download_file(filename):
     return "Файл не найден", 404
 
 
+@app.route("/api/file-content/<filename>")
+def api_file_content(filename):
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    if os.path.exists(filepath) and os.path.isfile(filepath):
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        ext = filename.rsplit(".", 1)[-1].lower()
+        return jsonify({"content": content, "type": ext})
+    return "Файл не найден", 404
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     print(f"Запуск сервера: http://localhost:{port}")
