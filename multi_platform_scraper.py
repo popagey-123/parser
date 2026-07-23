@@ -665,12 +665,33 @@ def scrape_article(url: str, favor_precision: bool = True) -> dict:
                 )
                 if article_html:
                     import html as html_lib
-                    text = re.sub(r'<br\s*/?>', '\n', article_html)
-                    text = re.sub(r'</?(p|h[1-6]|li|blockquote)\b[^>]*>', '\n\n', text)
-                    text = re.sub(r'<[^>]+>', '', text)
-                    text = html_lib.unescape(text)
-                    # Убираем строки с только пробелами, сжимаем множественные переносы
-                    lines = [l.strip() for l in text.split('\n')]
+                    md = article_html
+                    # Images
+                    md = re.sub(r'<img[^>]*src=["\']([^"\']+)["\'][^>]*alt=["\']([^"\']*)["\'][^>]*>', r'\n![\2](\1)\n', md)
+                    md = re.sub(r'<img[^>]*alt=["\']([^"\']*)["\'][^>]*src=["\']([^"\']+)["\'][^>]*>', r'\n![\1](\2)\n', md)
+                    md = re.sub(r'<img[^>]*src=["\']([^"\']+)["\'][^>]*>', r'\n![](\1)\n', md)
+                    # Headings
+                    md = re.sub(r'<h1[^>]*>(.*?)</h1>', r'\n# \1\n', md, flags=re.DOTALL)
+                    md = re.sub(r'<h2[^>]*>(.*?)</h2>', r'\n## \1\n', md, flags=re.DOTALL)
+                    md = re.sub(r'<h3[^>]*>(.*?)</h3>', r'\n### \1\n', md, flags=re.DOTALL)
+                    md = re.sub(r'<h4[^>]*>(.*?)</h4>', r'\n#### \1\n', md, flags=re.DOTALL)
+                    # Bold / Italic
+                    md = re.sub(r'<(?:b|strong)[^>]*>(.*?)</(?:b|strong)>', r'**\1**', md, flags=re.DOTALL)
+                    md = re.sub(r'<(?:i|em)[^>]*>(.*?)</(?:i|em)>', r'*\1*', md, flags=re.DOTALL)
+                    # Lists
+                    md = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1\n', md, flags=re.DOTALL)
+                    md = re.sub(r'<ul[^>]*>', r'\n', md)
+                    md = re.sub(r'</ul>', r'\n', md)
+                    md = re.sub(r'<ol[^>]*>', r'\n', md)
+                    md = re.sub(r'</ol>', r'\n', md)
+                    # Paragraphs / blocks
+                    md = re.sub(r'<br\s*/?>', r'\n', md)
+                    md = re.sub(r'</?(p|div|blockquote)\b[^>]*>', r'\n\n', md)
+                    # Remove remaining tags
+                    md = re.sub(r'<[^>]+>', '', md)
+                    md = html_lib.unescape(md)
+                    # Clean whitespace
+                    lines = [l.strip() for l in md.split('\n')]
                     lines = [l for l in lines if l]
                     text = '\n\n'.join(lines)
 
@@ -749,22 +770,17 @@ def scrape_article(url: str, favor_precision: bool = True) -> dict:
             filename = sanitize_filename(title or "article") + ".md"
             filepath = os.path.join(ARTICLES_DIR, filename)
 
-            lines = [f"# {title}\n", f"**URL:** {url}\n"]
+            header = f"# {title}\n\n**URL:** {url}\n"
             if result["author"]:
-                lines.append(f"**Автор:** {result['author']}\n")
+                header += f"**Автор:** {result['author']}\n"
             if result["published_date"]:
-                lines.append(f"**Дата:** {result['published_date']}\n")
+                header += f"**Дата:** {result['published_date']}\n"
             if result["og_site"]:
-                lines.append(f"**Источник:** {result['og_site']}\n")
-            lines.append("---\n")
-
-            for img in images[:5]:
-                lines.append(f"![{img['alt']}]({img['src']})\n")
-
-            lines.append(text or "")
+                header += f"**Источник:** {result['og_site']}\n"
+            header += "---\n\n"
 
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write("\n".join(lines))
+                f.write(header + (text or ""))
 
             print(f"  Сохранено: {filepath}")
             result["saved_path"] = filepath
