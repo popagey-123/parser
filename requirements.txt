@@ -1,5 +1,6 @@
 flask
 gunicorn
-playwright
+requests
+beautifulsoup4
 trafilatura
 lxml_html_clean
