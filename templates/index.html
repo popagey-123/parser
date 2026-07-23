@@ -882,7 +882,7 @@ return;
 container.innerHTML = '<div class="files-grid">' + files.map(f => {
 const icon = f.name.endsWith('.json') ? '📊' : f.name.endsWith('.md') ? '📝' : '📄';
 const size = f.size > 1024 ? (f.size / 1024).toFixed(1) + ' KB' : f.size + ' B';
-return '<div class="file-item"><span class="file-icon">' + icon + '</span><div class="file-info"><div class="file-name">' + f.name + '</div><div class="file-meta">' + size + ' · ' + f.modified + '</div></div></div>';
+return '<a class="file-item" href="/download/' + encodeURIComponent(f.name) + '" style="text-decoration:none;color:inherit"><span class="file-icon">' + icon + '</span><div class="file-info"><div class="file-name">' + f.name + '</div><div class="file-meta">' + size + ' · ' + f.modified + '</div></div><span style="font-size:16px">⬇️</span></a>';
 }).join('') + '</div>';
 });
 }

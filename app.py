@@ -3,7 +3,7 @@ import threading
 import time
 import os
 import sys
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -217,6 +217,14 @@ def api_files():
                     "modified": time.ctime(os.path.getmtime(fpath)),
                 })
     return jsonify(files)
+
+
+@app.route("/download/<filename>")
+def download_file(filename):
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    if os.path.exists(filepath) and os.path.isfile(filepath):
+        return send_file(filepath, as_attachment=True)
+    return "Файл не найден", 404
 
 
 if __name__ == "__main__":
