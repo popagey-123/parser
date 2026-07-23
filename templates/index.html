@@ -985,8 +985,25 @@ fetch('/api/file-content/' + encodeURIComponent(name))
 .then(r => r.json())
 .then(data => {
 if (data.type === 'json') {
-const jsonStr = JSON.stringify(JSON.parse(data.content), null, 2);
-body.innerHTML = '<pre>' + jsonStr.replace(/\\n/g, '\n') + '</pre>';
+const obj = JSON.parse(data.content);
+let display = '';
+for (const [key, value] of Object.entries(obj)) {
+if (key === 'text') {
+display += `${key}:\n${value}\n\n`;
+} else if (key === 'images' && Array.isArray(value)) {
+display += `images (${value.length}):\n`;
+value.slice(0, 5).forEach((img, i) => {
+display += `  [${i}] ${img.src}\n`;
+});
+if (value.length > 5) display += `  ... и ещё ${value.length - 5}\n`;
+display += '\n';
+} else if (typeof value === 'object' && value !== null) {
+display += `${key}:\n${JSON.stringify(value, null, 2).replace(/^/gm, '  ')}\n\n`;
+} else {
+display += `${key}: ${value}\n`;
+}
+}
+body.innerHTML = '<pre>' + display + '</pre>';
 } else {
 body.textContent = data.content;
 }
