@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+output/
+*.exe
+*.md
+gazprommap/
+vk_gasrussia/
+.venv/
+venv/
