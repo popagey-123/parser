@@ -678,18 +678,25 @@ def scrape_article(url: str, favor_precision: bool = True) -> dict:
 
             print(f"  Текст: {len(text) if text else 0} символов")
 
-            # Извлекаем изображения
+            # Извлекаем изображения (только контентные, без иконок и логотипов)
             images = page.evaluate("""() => {
                 const imgs = document.querySelectorAll('img');
                 const result = [];
+                const seen = new Set();
+                const skip = ['avatar', 'logo', 'default', 'icon', 'social', 'svg',
+                    'facebook', 'instagram', 'vkontakte', 'telegram', 'tiktok',
+                    'google-play', 'app-store', 'yandex', 'ok.', 'wbnews', 'weather',
+                    'google.', 'apple'];
                 for (const img of imgs) {
-                    const src = img.src || '';
+                    const src = img.src || img.dataset?.src || '';
                     const alt = img.alt || '';
-                    if (src && src !== 'about:blank' &&
-                        !src.includes('avatar') && !src.includes('logo') &&
-                        !src.includes('default') && !src.includes('icon')) {
-                        result.push({src, alt});
-                    }
+                    const naturalWidth = img.naturalWidth || 0;
+                    if (!src || src === 'about:blank' || seen.has(src)) continue;
+                    if (naturalWidth < 200) continue;
+                    if (skip.some(k => src.toLowerCase().includes(k))) continue;
+                    if (img.closest('.header, .footer, .sidebar, .nav, .social, .menu, .widget')) continue;
+                    seen.add(src);
+                    result.push({src, alt});
                 }
                 return result;
             }""")
