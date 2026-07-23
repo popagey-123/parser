@@ -652,29 +652,41 @@ def scrape_article(url: str, favor_precision: bool = True) -> dict:
 
             html = page.content()
 
-            # Извлекаем текст статьи
+            # Извлекаем текст статьи с сохранением абзацев
             text = None
             if HAS_TRAFILATURA:
-                text = trafilatura.extract(
+                article_html = trafilatura.extract(
                     html,
                     include_comments=False,
                     include_tables=True,
                     include_links=False,
                     favor_precision=favor_precision,
+                    output_format="html",
                 )
+                if article_html:
+                    # Конвертируем <p>, <h1-h6>, <li>, <blockquote> в переносы строк
+                    import html as html_lib
+                    text = re.sub(r'<br\s*/?>', '\n', article_html)
+                    text = re.sub(r'</?(p|h[1-6]|li|blockquote)\b[^>]*>', '\n\n', text)
+                    text = re.sub(r'<[^>]+>', '', text)
+                    text = html_lib.unescape(text)
+                    text = re.sub(r'\n{3,}', '\n\n', text).strip()
+
                 if not text:
                     text = trafilatura.extract(html, favor_recall=True)
 
             if not text:
-                # Fallback: извлекаем из <article> или <main>
                 text = page.evaluate("""() => {
                     const article = document.querySelector('article, .article-content, .post-content, main, .content');
-                    if (article) return article.innerText;
-                    return document.body.innerText;
+                    const el = article || document.body;
+                    const paragraphs = el.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
+                    const lines = [];
+                    paragraphs.forEach(p => {
+                        const t = p.innerText.trim();
+                        if (t) lines.push(t);
+                    });
+                    return lines.join('\\n\\n');
                 }""")
-
-            if not text:
-                text = page.evaluate("() => document.body.innerText")
 
             print(f"  Текст: {len(text) if text else 0} символов")
 
