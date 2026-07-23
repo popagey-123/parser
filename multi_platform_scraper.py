@@ -652,64 +652,22 @@ def scrape_article(url: str, favor_precision: bool = True) -> dict:
 
             html = page.content()
 
-            # Извлекаем текст статьи с сохранением абзацев
-            text = None
-            if HAS_TRAFILATURA:
-                article_html = trafilatura.extract(
-                    html,
-                    include_comments=False,
-                    include_tables=True,
-                    include_links=False,
-                    favor_precision=favor_precision,
-                    output_format="html",
-                )
-                if article_html:
-                    import html as html_lib
-                    md = article_html
-                    # Images
-                    md = re.sub(r'<img[^>]*src=["\']([^"\']+)["\'][^>]*alt=["\']([^"\']*)["\'][^>]*>', r'\n![\2](\1)\n', md)
-                    md = re.sub(r'<img[^>]*alt=["\']([^"\']*)["\'][^>]*src=["\']([^"\']+)["\'][^>]*>', r'\n![\1](\2)\n', md)
-                    md = re.sub(r'<img[^>]*src=["\']([^"\']+)["\'][^>]*>', r'\n![](\1)\n', md)
-                    # Headings
-                    md = re.sub(r'<h1[^>]*>(.*?)</h1>', r'\n# \1\n', md, flags=re.DOTALL)
-                    md = re.sub(r'<h2[^>]*>(.*?)</h2>', r'\n## \1\n', md, flags=re.DOTALL)
-                    md = re.sub(r'<h3[^>]*>(.*?)</h3>', r'\n### \1\n', md, flags=re.DOTALL)
-                    md = re.sub(r'<h4[^>]*>(.*?)</h4>', r'\n#### \1\n', md, flags=re.DOTALL)
-                    # Bold / Italic
-                    md = re.sub(r'<(?:b|strong)[^>]*>(.*?)</(?:b|strong)>', r'**\1**', md, flags=re.DOTALL)
-                    md = re.sub(r'<(?:i|em)[^>]*>(.*?)</(?:i|em)>', r'*\1*', md, flags=re.DOTALL)
-                    # Lists
-                    md = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1\n', md, flags=re.DOTALL)
-                    md = re.sub(r'<ul[^>]*>', r'\n', md)
-                    md = re.sub(r'</ul>', r'\n', md)
-                    md = re.sub(r'<ol[^>]*>', r'\n', md)
-                    md = re.sub(r'</ol>', r'\n', md)
-                    # Paragraphs / blocks
-                    md = re.sub(r'<br\s*/?>', r'\n', md)
-                    md = re.sub(r'</?(p|div|blockquote)\b[^>]*>', r'\n\n', md)
-                    # Remove remaining tags
-                    md = re.sub(r'<[^>]+>', '', md)
-                    md = html_lib.unescape(md)
-                    # Clean whitespace
-                    lines = [l.strip() for l in md.split('\n')]
-                    lines = [l for l in lines if l]
-                    text = '\n\n'.join(lines)
+            # Извлекаем текст статьи с сохранением абзацев (JS — надёжнее)
+            text = page.evaluate("""() => {
+                const article = document.querySelector('article, .article-content, .post-content, main, .content');
+                const container = article || document.body;
+                const paragraphs = container.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
+                const lines = [];
+                paragraphs.forEach(p => {
+                    const t = p.innerText.trim();
+                    if (t) lines.push(t);
+                });
+                return lines.join('\\n\\n');
+            }""")
 
-                if not text:
-                    text = trafilatura.extract(html, favor_recall=True)
-
-            if not text:
-                text = page.evaluate("""() => {
-                    const article = document.querySelector('article, .article-content, .post-content, main, .content');
-                    const el = article || document.body;
-                    const paragraphs = el.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
-                    const lines = [];
-                    paragraphs.forEach(p => {
-                        const t = p.innerText.trim();
-                        if (t) lines.push(t);
-                    });
-                    return lines.join('\\n\\n');
-                }""")
+            # Fallback на trafilatura, если JS не нашёл абзацев
+            if not text and HAS_TRAFILATURA:
+                text = trafilatura.extract(html, favor_recall=True)
 
             print(f"  Текст: {len(text) if text else 0} символов")
 
