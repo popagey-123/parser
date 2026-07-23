@@ -2,11 +2,9 @@ services:
   - type: web
     name: scraper-hub
     env: python
-    buildCommand: pip install -r requirements.txt && playwright install chromium
-    startCommand: python app.py
+    buildCommand: pip install -r requirements.txt && playwright install --with-deps chromium
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120
     plan: free
     envVars:
-      - key: PORT
-        value: 10000
       - key: PLAYWRIGHT_BROWSERS_PATH
         value: /ms-playwright
