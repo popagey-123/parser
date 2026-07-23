@@ -728,17 +728,20 @@ def scrape_article(url: str, favor_precision: bool = True) -> dict:
             filename = sanitize_filename(title or "article") + ".md"
             filepath = os.path.join(ARTICLES_DIR, filename)
 
-            header = f"# {title}\n\n**URL:** {url}\n"
+            md_lines = [f"# {title}\n"]
             if result["author"]:
-                header += f"**Автор:** {result['author']}\n"
+                md_lines.append(f"**Автор:** {result['author']}")
             if result["published_date"]:
-                header += f"**Дата:** {result['published_date']}\n"
-            if result["og_site"]:
-                header += f"**Источник:** {result['og_site']}\n"
-            header += "---\n\n"
+                md_lines.append(f"**Дата:** {result['published_date']}")
+            md_lines.append(f"**URL:** {url}\n")
+            md_lines.append("---\n")
+
+            # Добавляем текст статьи с абзацами
+            if text:
+                md_lines.append(text)
 
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write(header + (text or ""))
+                f.write("\n".join(md_lines))
 
             print(f"  Сохранено: {filepath}")
             result["saved_path"] = filepath
